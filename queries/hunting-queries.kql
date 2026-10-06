@@ -1,0 +1,35 @@
+// Process activity
+DeviceProcessEvents
+| where Timestamp between (datetime(2026-08-09 09:10:00) .. datetime(2026-08-09 09:15:00))
+| where DeviceName == "FIN-LT-22"
+| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, FileName, ProcessCommandLine
+| sort by Timestamp asc
+
+// Network activity
+DeviceNetworkEvents
+| where Timestamp between (datetime(2026-08-09 09:10:00) .. datetime(2026-08-09 09:15:00))
+| where DeviceName == "FIN-LT-22"
+| project Timestamp, DeviceName, InitiatingProcessFileName, RemoteIP, RemotePort, ActionType
+| sort by Timestamp asc
+
+// Identity activity
+IdentityLogonEvents
+| where Timestamp between (datetime(2026-08-09 08:30:00) .. datetime(2026-08-09 10:00:00))
+| where AccountName == "maya.chen"
+| project Timestamp, AccountName, ActionType, DeviceName, IPAddress, Location
+| sort by Timestamp asc
+
+// Process/network correlation
+DeviceProcessEvents
+| where DeviceName == "FIN-LT-22"
+| where Timestamp between (datetime(2026-08-09 09:10:00) .. datetime(2026-08-09 09:15:00))
+| project ProcessTime=Timestamp, DeviceName, FileName, ProcessCommandLine, ProcessId
+| join kind=inner (
+    DeviceNetworkEvents
+    | where DeviceName == "FIN-LT-22"
+    | where Timestamp between (datetime(2026-08-09 09:10:00) .. datetime(2026-08-09 09:15:00))
+    | project NetworkTime=Timestamp, DeviceName, InitiatingProcessFileName, RemoteIP, RemotePort
+) on DeviceName
+| where FileName == InitiatingProcessFileName
+| project ProcessTime, NetworkTime, DeviceName, FileName, ProcessCommandLine, RemoteIP, RemotePort
+| sort by ProcessTime asc
